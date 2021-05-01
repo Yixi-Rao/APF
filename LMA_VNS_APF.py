@@ -74,12 +74,12 @@ class APF_SA():
         self.current_pos          = Vector2d(start[0], start[1]) # 当前位置
         self.is_path_plan_success = False                        # 是否陷入不可达或局部最小值
         self.path                 = list()                       # 规划路径
+        self.subgoals             = list()
 
     def U_att(self, pos):
         return 0.5 * self.k_att * ((pos - self.goal).length) ** 2
 
     def U_rep(self, pos):
-        # min_dis = min(map(lambda x : (x - self.current_pos).length, self.V_obstacle_list))
         all_U = 0
         for ob in self.V_obstacle_list:
             rep_F = self.current_pos - ob  
@@ -87,12 +87,12 @@ class APF_SA():
                 all_U += 0.5 * self.k_rep * (1 / (rep_F.length) - (1 / self.rep_range)) ** 2
         return all_U
 
-    def attractive_F(self):
+    def attractive_F(self, source):
         '''
             U_att(cur) = 1/2 * α * |cur - goal|^2 
             F_att(cur) = - ▽U_att(cur) = - α * (cur - goal)
         '''
-        att = (self.goal - self.current_pos) * self.k_att
+        att = (source - self.current_pos) * self.k_att
         return att
 
     def repulsion_F(self):
@@ -123,38 +123,26 @@ class APF_SA():
 
     def path_plan(self):
         while (self.cur_iters < self.max_iters and (self.current_pos - self.goal).length > self.goal_threashold):
-            f_vec = self.attractive_F() + self.repulsion_F()
-            
-            self.current_pos += Vector2d(f_vec.Unit_Vec[0], f_vec.Unit_Vec[1]) * self.step_size
-            
-        # escape --------------------------------------
-            if (len(self.path) >= 3 and (Vector2d(self.path[-2][0], self.path[-2][1]) - self.current_pos).length < self.step_size):
-                T0 = 500  # initial T
-                r  = 0.99 # cooling rate
-                Tf = 10   # exit T
-                
-                
-                while (T0 >= Tf):
-                    new_pos = self.neighborhood_all_direction(self.current_pos)
-                    U_cur   = self.U_att(self.current_pos) + self.U_rep(self.current_pos)
-                    U_new   = self.U_att(new_pos) + self.U_rep(new_pos)
-                    del_U   = U_new - U_cur
-
-                    if (del_U <= 0):
-                        self.current_pos = new_pos
-                        self.path.append([self.current_pos.deltaX, self.current_pos.deltaY])
+            if len(self.subgoals) != 0:
+                f_vec = self.attractive_F(self.subgoals[0]) + self.repulsion_F()
+                self.current_pos += Vector2d(f_vec.Unit_Vec[0], f_vec.Unit_Vec[1]) * self.step_size
+                if (len(self.path) >= 3 and (Vector2d(self.path[-2][0], self.path[-2][1]) - self.current_pos).length < self.step_size):
+                    self.current_pos, self.subgoals = self.dividePath(self.path)
+                    VNS(self.subgoals, Neighbours)
+                else:
+                    if (self.current_pos - self.subgoals[0]).length <= self.goal_threashold:
+                        self.subgoals.remove(self.subgoals[0])
                     else:
-                        if (math.exp((-1 * del_U) / (T0 * 1)) > random.random()):
-                            self.current_pos = new_pos
-                            self.path.append([self.current_pos.deltaX, self.current_pos.deltaY])
-                    if U_new <= U_cur:
-                        break
-                        
-                    T0 = r * T0
-        # escape end --------------------------------------
+                        self.path.append([self.current_pos.deltaX, self.current_pos.deltaY])
+            else:
+                f_vec = self.attractive_F(self.goal) + self.repulsion_F()
+                self.current_pos += Vector2d(f_vec.Unit_Vec[0], f_vec.Unit_Vec[1]) * self.step_size
+                if (len(self.path) >= 3 and (Vector2d(self.path[-2][0], self.path[-2][1]) - self.current_pos).length < self.step_size):
+                    self.current_pos, self.subgoals = self.dividePath(self.path)
+                    VNS(self.subgoals, Neighbours)
+                else:
+                    self.path.append([self.current_pos.deltaX, self.current_pos.deltaY])
             self.cur_iters += 1
-            self.path.append([self.current_pos.deltaX, self.current_pos.deltaY])
-
         if (self.current_pos - self.goal).length <= self.goal_threashold:
             self.is_path_plan_success = True
 
