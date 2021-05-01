@@ -108,10 +108,20 @@ class APF_VNS():
         return rep
 
 
-    def dividePath(self, path: List[tuple], length: int) -> tuple:
-        pass
+    def dividePath(self, path: list) -> tuple:
+        self.subgoals.clear()
+        if len(self.path) < self.length:
+            self.subgoals.append(self.path[0])
+            self.path.remove(self.path[0])
+        else:
+            interval = int(self.length / self.num_SG)
+            for index in range(self.num_SG):
+                self.subgoals.append(self.path[-1 - (index + 1) * interval])
+                if index == self.num_SG - 1:
+                    self.path = self.path[0 : -1 - (index + 1) * interval + len(self.path)]
+        #todo: self.current_pos
         
-    def VNS(self, subgoals: list[tuple], neighbors: list):
+    def VNS(self, subgoals: list, neighbors: list):
         pass
     
     def objective_func(self, subgoals: list)-> float:
@@ -119,11 +129,12 @@ class APF_VNS():
     
     def path_plan(self):
         while (self.cur_iters < self.max_iters and (self.current_pos - self.goal).length > self.goal_threshold):
+            
             if len(self.subgoals) != 0:
                 f_vec = self.attractive_F(self.subgoals[0]) + self.repulsion_F()
                 self.current_pos += Vector2d(f_vec.Unit_Vec[0], f_vec.Unit_Vec[1]) * self.step_size
                 if (len(self.path) >= 3 and (Vector2d(self.path[-2][0], self.path[-2][1]) - self.current_pos).length < self.step_size):
-                    self.current_pos, self.subgoals = self.dividePath(self.path, self.length)
+                    self.current_pos, self.subgoals = self.dividePath(self.path)
                     self.VNS(self.subgoals, Neighbours)
                 else:
                     if (self.current_pos - self.subgoals[0]).length <= self.goal_threshold:
@@ -138,6 +149,7 @@ class APF_VNS():
                     VNS(self.subgoals, Neighbours)
                 else:
                     self.path.append([self.current_pos.deltaX, self.current_pos.deltaY])
+                    
             self.cur_iters += 1
         if (self.current_pos - self.goal).length <= self.goal_threshold:
             self.is_path_plan_success = True
@@ -173,26 +185,44 @@ if __name__ == '__main__':
     step_size      = 0.2
     max_iters      = 1000
     goal_threshold = 1.0
-    length         = 30
-    num_sub        = 5
+    length         = 18
+    num_sub        = 4
     
     APF1 = APF_VNS(start, goal, obstacle_List1, k_att, k_rep, rep_range, step_size, max_iters, goal_threshold, length, num_sub)
-    APF1.path_plan()
+    APF1.path = [[0.1414213562373095, 0.1414213562373095],
+                    [0.282842712474619, 0.282842712474619],
+                    [0.4242640687119285, 0.4242640687119285],
+                    [0.565685424949238, 0.565685424949238],
+                        [0.7071067811865475, 0.7071067811865475],
+                        [0.848528137423857, 0.848528137423857], 
+                        [0.9899494936611666, 0.9899494936611666],
+                        [1.131370849898476, 1.131370849898476], 
+                            [1.2727922061357855, 1.2727922061357855], 
+                            [1.414213562373095, 1.414213562373095],
+                            [1.5556349186104044, 1.5556349186104044],
+                            [1.6970562748477138, 1.6970562748477138],
+                                [1.8384776310850233, 1.8384776310850233],
+                                [1.9798989873223327, 1.9798989873223327],
+                                [2.1213203435596424, 2.1213203435596424],
+                                [2.262741699796952, 2.262741699796952],
+                                    [2.4041630560342617, 2.4041630560342617],
+                                    [2.5455844122715714, 2.5455844122715714]]
+    # APF1.path_plan()
     
-    fig = plt.figure(figsize=(7, 7))
-    subplot = fig.add_subplot(111)
-    subplot.set_xlabel('X')
-    subplot.set_ylabel('Y')
-    subplot.plot(start[0], start[1], 'X')
+    # fig = plt.figure(figsize=(7, 7))
+    # subplot = fig.add_subplot(111)
+    # subplot.set_xlabel('X')
+    # subplot.set_ylabel('Y')
+    # subplot.plot(start[0], start[1], 'X')
     
-    circle_goal = Circle(xy=(goal[0], goal[1]), radius=goal_threshold, alpha=0.9)
-    subplot.plot(goal[0], goal[1], 'X')
-    subplot.add_patch(circle_goal)
+    # circle_goal = Circle(xy=(goal[0], goal[1]), radius=goal_threshold, alpha=0.9)
+    # subplot.plot(goal[0], goal[1], 'X')
+    # subplot.add_patch(circle_goal)
     
-    for ob_pos in obstacle_List1:
-        circle = Circle(xy=(ob_pos[0], ob_pos[1]), radius=rep_range, alpha=0.3)
-        subplot.plot(ob_pos[0], ob_pos[1], 'o')
-        subplot.add_patch(circle)
+    # for ob_pos in obstacle_List1:
+    #     circle = Circle(xy=(ob_pos[0], ob_pos[1]), radius=rep_range, alpha=0.3)
+    #     subplot.plot(ob_pos[0], ob_pos[1], 'o')
+    #     subplot.add_patch(circle)
         
-    subplot.plot([p[0] for p in APF1.path], [p[1] for p in APF1.path], linestyle='-', marker='o')
-    plt.show()
+    # subplot.plot([p[0] for p in APF1.path], [p[1] for p in APF1.path], linestyle='-', marker='o')
+    # plt.show()
