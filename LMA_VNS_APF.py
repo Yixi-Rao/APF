@@ -2,6 +2,7 @@ import math
 from matplotlib import pyplot as plt
 from matplotlib.patches import Circle
 import random
+import functools
 import numpy as np
 
 class Vector2d():
@@ -55,7 +56,8 @@ class APF_VNS():
                  start:     tuple, goal:            tuple, obstacle_List: list,
                  k_att:     float, k_rep:           float,
                  rep_range: float, step_size:       float, max_iters:     int, goal_threshold: float,
-                 length:     int,  number_subgoals: int):
+                 length:     int,  number_subgoals: int,
+                 N_order: list):
         
         self.start           = Vector2d(start[0], start[1])                     # 起点vector
         self.goal            = Vector2d(goal[0], goal[1])                       # 终点vector
@@ -68,11 +70,13 @@ class APF_VNS():
         self.goal_threshold  = goal_threshold  # 离目标点小于此值即认为到达目标点
 
         self.cur_iters   = 0                            # 当前迭代数
-        self.current_pos = Vector2d(start[0], start[1]) # 当前位置
-        self.path        = list()                       # 规划路径
+        self.current_pos = Vector2d(start[0], start[1]) # 当前位置: vector
+        self.path        = list()                       # 规划路径: list(tuple)
         self.length      = length                       # 规定提取子目标的path的长度
         self.num_SG      = number_subgoals              # 子目标个数
-        self.subgoals    = list()                       # 子目标
+        self.subgoals    = list()                       # 子目标: list(tuple)
+        self.N_order     = N_order                      # *领域的顺序: domain = {"neihgbourhood_up", "neihgbourhood_dowm", "neihgbourhood_left", "neihgbourhood_right",
+                                                        # *                     "neihgbourhood_random", "neihgbourhood_random_eight", "neihgbourhood_obs_free", "neihgbourhood_optimize_edge"}
         
         self.is_path_plan_success = False               # 是否陷入不可达或局部最小值
 
@@ -107,7 +111,9 @@ class APF_VNS():
                 rep += Vector2d(rep_F.Unit_Vec[0], rep_F.Unit_Vec[1]) * self.k_rep * (1.0 / rep_F.length - 1.0 / self.rep_range) / (rep_F.length ** 2)
         return rep
 
-    def dividePath(self) -> tuple:
+    def dividePath(self):
+        '''generate the self.subgoals, which is uniformly spaced from the self.path[len(self.path) - self.length : ]
+        '''
         self.subgoals.clear()
         if len(self.path) < self.length:
             self.subgoals.append(self.path[0])
@@ -118,13 +124,80 @@ class APF_VNS():
                 self.subgoals.append(self.path[-1 - (index + 1) * interval])
                 if index == self.num_SG - 1:
                     self.path = self.path[0 : -1 - (index + 1) * interval + len(self.path)]
-        #todo: self.current_pos
+                    self.current_pos = self.path[-1 - (index + 2) * interval + len(self.path)]
+                    # TODO: index out of bound
+                    
+    def VNS(self, neighbourhood_names: list):
+        '''find the subgoals that can help the agent escape from the LM
+
+            Args:
+                neighbourhood_names (list): list of the neighbourhood function name e.g. ["neihgbour_up","neihgbour_left"...]
+        '''
+        t = 1
+        k = 1
+        cur_SGs = self.subgoals
         
-    def VNS(self, subgoals: list, neighbors: list):
-        pass
+        while k != len(neighbourhood_names) and t != 50:
+            shaked_SGs = self.shuffing(cur_SGs)
+            local_SGs  = self.bestImprovement(shaked_SGs, self.neighbourhood_selector(neighbourhood_names[k - 1], shaked_SGs))
+            if self.objective_func(local_SGs) < self.objective_func(cur_SGs):
+                cur_SGs = local_SGs
+                k = 1
+            else:
+                k = k + 1
+            t = t + 1
     
+    def bestImprovement(self, shaked_SGs: list, N: set)-> list:
+        '''a local serach
+
+            Args:
+                shaked_SGs (list): a shaked subgoal list
+                N (set): set of neighbour subgoals
+
+            Returns:
+                list: best neighbour in N
+        '''
+        temp  = shaked_SGs.copy()
+        t_max = 1
+        while True and t_max < 20:
+            local_SGs = temp
+            min_val   = min(map(self.objective_func, N))
+            temp      = list(filter(lambda x: self.objective_func(x) == min_val, N))[0]
+            t_max += 1
+            if min_val >= self.objective_func(local_SGs):
+                return temp
+    
+    def shuffing(self, cur_SGs: list)-> list:
+        '''randomly change exact one subgoal in the cur_SGs by randomly select a direction
+
+            Args:
+                cur_SGs (list): current subgoals
+
+            Returns:
+                [list]: new shaked subgoals
+        '''
+        ran_index = random.randint(0, len(cur_SGs) - 1)
+        result    = cur_SGs.copy()
+        while True:
+            ran_degree = random.randint(0, 360)
+            cos = math.cos(math.radians(ran_degree))
+            sin = math.sin(math.radians(ran_degree))
+            vec = Vector2d(cos, sin) * self.step_size
+            new_pos = (self.subgoals[ran_index][0] + vec.Unit_Vec[0], self.subgoals[ran_index][1] + vec.Unit_Vec[1])
+            if new_pos not in self.V_obstacle_list:
+                result[ran_index] = new_pos
+                return result
+        
     def objective_func(self, subgoals: list)-> float:
-        pass
+        '''evaluate the subgoals in three aspects
+
+            Args:
+                subgoals (list): subgoals
+
+            Returns:
+                float: evaluation
+        '''
+        return 0.0
     
     def path_plan(self):
         while (self.cur_iters < self.max_iters and (self.current_pos - self.goal).length > self.goal_threshold):
@@ -133,43 +206,68 @@ class APF_VNS():
                 f_vec = self.attractive_F(self.subgoals[0]) + self.repulsion_F()
                 self.current_pos += Vector2d(f_vec.Unit_Vec[0], f_vec.Unit_Vec[1]) * self.step_size
                 if (len(self.path) >= 3 and (Vector2d(self.path[-2][0], self.path[-2][1]) - self.current_pos).length < self.step_size):
-                    self.current_pos, self.subgoals = self.dividePath(self.path)
-                    self.VNS(self.subgoals, Neighbours)
+                    self.dividePath()
+                    self.VNS(self.N_order)
                 else:
-                    if (self.current_pos - self.subgoals[0]).length <= self.goal_threshold:
+                    if (self.current_pos - self.subgoals[0]).length <= self.step_size:
                         self.subgoals.remove(self.subgoals[0])
                     else:
-                        self.path.append([self.current_pos.deltaX, self.current_pos.deltaY])
+                        self.path.append((self.current_pos.deltaX, self.current_pos.deltaY))
             else:
                 f_vec = self.attractive_F(self.goal) + self.repulsion_F()
                 self.current_pos += Vector2d(f_vec.Unit_Vec[0], f_vec.Unit_Vec[1]) * self.step_size
                 if (len(self.path) >= 3 and (Vector2d(self.path[-2][0], self.path[-2][1]) - self.current_pos).length < self.step_size):
-                    self.current_pos, self.subgoals = self.dividePath(self.path)
-                    VNS(self.subgoals, Neighbours)
+                    self.dividePath()
+                    self.VNS(self.N_order)
                 else:
-                    self.path.append([self.current_pos.deltaX, self.current_pos.deltaY])
+                    self.path.append((self.current_pos.deltaX, self.current_pos.deltaY))
                     
             self.cur_iters += 1
         if (self.current_pos - self.goal).length <= self.goal_threshold:
             self.is_path_plan_success = True
+   
+    def neighbourhood_random(self, cur_SGs : list)-> set:
+        '''randomly change the direction in 360 degrss
 
+            Args:
+                cur_SGs (list): current positon
+
+            Returns:
+                set: the set of neighbour solution
+        '''
+        # TODO: neighbourhood
+        return {cur_SGs}
     
-        
-    def neighborhood_all_direction(self, pos):
-        degree = random.randint(0, 360)
-        cos = math.cos(math.radians(degree))
-        sin = math.sin(math.radians(degree))
-        vec = Vector2d(cos, sin) * self.step_size
-        new_pos = pos + vec
-        return new_pos
+    def neighbourhood_selector(self, name: str, cur_SGs : list)-> set:
+        '''select the right neighbourhood by using the name
+            # *neighbourhood name domain = {"neihgbourhood_up", "neihgbourhood_dowm", "neihgbourhood_left", "neihgbourhood_right",
+            # *                             "neihgbourhood_random", "neihgbourhood_random_eight", "neihgbourhood_obs_free", "neihgbourhood_optimize_edge"}
 
-    def neighborhood_adjacent(self, pos):
-        degree = random.randint(1, 4)
-        cos = math.cos(math.radians(degree * 90))
-        sin = math.sin(math.radians(degree * 90))
-        vec = Vector2d(cos, sin) * self.step_size
-        new_pos = pos + vec
-        return new_pos
+            Args:
+                name (str): name of the neighbourhood we want 
+                cur_SGs (list): current subgoals
+            Returns:
+                set: set of all of this neighbourhood solutions
+        '''
+        if name == "neihgbourhood_random":
+            return self.neighbourhood_random(cur_SGs)
+        elif name == "neihgbourhood_up":
+            pass
+        elif name == "neihgbourhood_dowm":
+            pass
+        elif name == "neihgbourhood_left":
+            pass
+        elif name == "neihgbourhood_right":
+            pass
+        elif name == "neihgbourhood_random_eight":
+            pass
+        elif name == "neihgbourhood_obs_free":
+            pass
+        elif name == "neihgbourhood_optimize_edge":
+            pass
+        else:
+            raise ValueError("name: " + name + " - this Neighbourhood does not exist!!!")
+    
 
 if __name__ == '__main__':
     start = (0, 0)
@@ -187,25 +285,9 @@ if __name__ == '__main__':
     length         = 18
     num_sub        = 4
     
-    APF1 = APF_VNS(start, goal, obstacle_List1, k_att, k_rep, rep_range, step_size, max_iters, goal_threshold, length, num_sub)
-    APF1.path = [[0.1414213562373095, 0.1414213562373095],
-                    [0.282842712474619, 0.282842712474619],
-                    [0.4242640687119285, 0.4242640687119285],
-                    [0.565685424949238, 0.565685424949238],
-                        [0.7071067811865475, 0.7071067811865475],
-                        [0.848528137423857, 0.848528137423857], 
-                        [0.9899494936611666, 0.9899494936611666],
-                        [1.131370849898476, 1.131370849898476], 
-                            [1.2727922061357855, 1.2727922061357855], 
-                            [1.414213562373095, 1.414213562373095],
-                            [1.5556349186104044, 1.5556349186104044],
-                            [1.6970562748477138, 1.6970562748477138],
-                                [1.8384776310850233, 1.8384776310850233],
-                                [1.9798989873223327, 1.9798989873223327],
-                                [2.1213203435596424, 2.1213203435596424],
-                                [2.262741699796952, 2.262741699796952],
-                                    [2.4041630560342617, 2.4041630560342617],
-                                    [2.5455844122715714, 2.5455844122715714]]
+    neighbour_name = ["neihgbourhood_up", "neihgbourhood_dowm", "neihgbourhood_left", "neihgbourhood_right"]
+    
+    APF1 = APF_VNS(start, goal, obstacle_List1, k_att, k_rep, rep_range, step_size, max_iters, goal_threshold, length, num_sub, neighbour_name)
     # APF1.path_plan()
     
     # fig = plt.figure(figsize=(7, 7))
