@@ -73,7 +73,7 @@ class APF_SA():
         self.cur_iters            = 0                            # 当前迭代数
         self.current_pos          = Vector2d(start[0], start[1]) # 当前位置
         self.is_path_plan_success = False                        # 是否陷入不可达或局部最小值
-        self.path                 = list()                       # 规划路径
+        self.path                 = list()                       # 规划路径 
 
     def U_att(self, pos):
         return 0.5 * self.k_att * ((pos - self.goal).length) ** 2
