@@ -107,8 +107,7 @@ class APF_VNS():
                 rep += Vector2d(rep_F.Unit_Vec[0], rep_F.Unit_Vec[1]) * self.k_rep * (1.0 / rep_F.length - 1.0 / self.rep_range) / (rep_F.length ** 2)
         return rep
 
-
-    def dividePath(self, path: list) -> tuple:
+    def dividePath(self) -> tuple:
         self.subgoals.clear()
         if len(self.path) < self.length:
             self.subgoals.append(self.path[0])
