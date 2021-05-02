@@ -19,10 +19,12 @@ class Vector2d():
         '''
         self.length = math.sqrt(self.deltaX ** 2 + self.deltaY ** 2) * 1.0
         if self.length > 0:
-            self.Unit_Vec = [self.deltaX /
-                             self.length, self.deltaY / self.length]
+            self.Unit_Vec = [self.deltaX / self.length, self.deltaY / self.length]
         else:
             self.Unit_Vec = None
+            
+    def vector_in_tuple(self)-> tuple:
+        return (self.deltaX, self.deltaY)
 
     def __add__(self, other):
         vec = Vector2d(self.deltaX, self.deltaY)
@@ -59,7 +61,7 @@ class Vector2d():
     def distance_point_line(p: tuple, line_p1: tuple, line_p2: tuple)-> float:
         vec1 = np.array(line_p1) - np.array(p)
         vec2 = np.array(line_p2) - np.array(p)
-        vecP = Vector2d(line_p2, line_p1)
+        vecP = Vector2d(line_p2[0] - line_p1[0], line_p2[1] - line_p1[1])
         distance = np.abs(np.cross(vec1,vec2)) / vecP.length
         return distance
 
@@ -102,8 +104,16 @@ class APF_VNS():
             if (rep_F.length <= self.rep_range):
                 all_U += 0.5 * self.k_rep * (1 / (rep_F.length) - (1 / self.rep_range)) ** 2
         return all_U
+    
+    def U_edge(self, line_p1: tuple, line_p2: tuple)-> float:
+        all_U = 0
+        for ob in self.V_obstacle_list:
+            distance = Vector2d.distance_point_line(ob.vector_in_tuple(), line_p1, line_p2)
+            if (distance <= self.rep_range):
+                all_U += 0.5 * self.k_rep * (1 / (distance) - (1 / self.rep_range)) ** 2
+        return all_U
 
-    def attractive_F(self, source):
+    def attractive_F(self, source: Vector2d):
         '''
             U_att(cur) = 1/2 * α * |cur - goal|^2 
             F_att(cur) = - ▽U_att(cur) = - α * (cur - goal)
@@ -143,9 +153,8 @@ class APF_VNS():
                         self.current_pos = self.path[0]
                     else:
                         self.current_pos = self.path[SG_index + INTERVAL + len(self.path)]  
-                    
-                    
-    def VNS(self, neighbourhood_names: list):
+
+    def VNS(self, neighbourhood_names: list)-> None:
         '''find the subgoals that can help the agent escape from the LM
 
             Args:
@@ -215,9 +224,9 @@ class APF_VNS():
             Returns:
                 float: evaluation
         '''
-        U_ALL = functools.reduce(lambda x,y: (self.U_att(x) - self.U_rep(x)) + (self.U_att(y) - self.U_rep(y)), subgoals)
-        D_PATH = [Vector2d.distance_points(subgoals[i - 1], subgoals[i]) for i in range(1, len(subgoals))]
-        U_EDGE = 0
+        U_ALL  = functools.reduce(lambda x,y: (self.U_att(x) - self.U_rep(x)) + (self.U_att(y) - self.U_rep(y)), subgoals)
+        D_PATH = sum([Vector2d.distance_points(subgoals[i - 1], subgoals[i]) for i in range(1, len(subgoals))])
+        U_EDGE = sum([self.U_edge(subgoals[i], subgoals[i - 1])  for i in range(1, len(subgoals))])
         a = 1
         b = 1
         c = 1
@@ -375,7 +384,7 @@ class APF_VNS():
             return self.neighbourhood_optimize_edge(cur_SGs)
         else:
             raise ValueError("name: " + name + " - this Neighbourhood does not exist!!!")
-        
+
 
 if __name__ == '__main__':
     start = (0, 0)
