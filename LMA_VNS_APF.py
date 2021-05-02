@@ -51,8 +51,17 @@ class Vector2d():
     def __repr__(self):
         return 'Vector X:{}, Y:{}, length:{}, Unit_Vec:{}'.format(self.deltaX, self.deltaY, self.length, self.Unit_Vec)
     
+    @staticmethod
     def distance_points(p1: tuple,p2: tuple)-> float:
         return math.sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2)
+    
+    @staticmethod
+    def distance_point_line(p: tuple, line_p1: tuple, line_p2: tuple)-> float:
+        vec1 = np.array(line_p1) - np.array(p)
+        vec2 = np.array(line_p2) - np.array(p)
+        vecP = Vector2d(line_p2, line_p1)
+        distance = np.abs(np.cross(vec1,vec2)) / vecP.length
+        return distance
 
 class APF_VNS():
     def __init__(self,
@@ -208,7 +217,7 @@ class APF_VNS():
         '''
         U_ALL = functools.reduce(lambda x,y: (self.U_att(x) - self.U_rep(x)) + (self.U_att(y) - self.U_rep(y)), subgoals)
         D_PATH = [Vector2d.distance_points(subgoals[i - 1], subgoals[i]) for i in range(1, len(subgoals))]
-        U_EDGE = 
+        U_EDGE = 0
         a = 1
         b = 1
         c = 1
@@ -253,10 +262,94 @@ class APF_VNS():
         # TODO: neighbourhood
         return {cur_SGs}
     
+    def neighbourhood_up(self, cur_SGs : list)-> set:
+        '''randomly change the direction in 360 degrss
+
+            Args:
+                cur_SGs (list): current positon
+
+            Returns:
+                set: the set of neighbour solution
+        '''
+        # TODO: neighbourhood
+        return {cur_SGs}
+    
+    def neighbourhood_dowm(self, cur_SGs : list)-> set:
+        '''randomly change the direction in 360 degrss
+
+            Args:
+                cur_SGs (list): current positon
+
+            Returns:
+                set: the set of neighbour solution
+        '''
+        # TODO: neighbourhood
+        return {cur_SGs}
+    
+    def neighbourhood_left(self, cur_SGs : list)-> set:
+        '''randomly change the direction in 360 degrss
+
+            Args:
+                cur_SGs (list): current positon
+
+            Returns:
+                set: the set of neighbour solution
+        '''
+        # TODO: neighbourhood
+        return {cur_SGs}
+    
+    def neighbourhood_right(self, cur_SGs : list)-> set:
+        '''randomly change the direction in 360 degrss
+
+            Args:
+                cur_SGs (list): current positon
+
+            Returns:
+                set: the set of neighbour solution
+        '''
+        # TODO: neighbourhood
+        return {cur_SGs}
+    
+    def neighbourhood_random_eight(self, cur_SGs : list)-> set:
+        '''randomly change the direction in 360 degrss
+
+            Args:
+                cur_SGs (list): current positon
+
+            Returns:
+                set: the set of neighbour solution
+        '''
+        # TODO: neighbourhood
+        return {cur_SGs}
+    
+    def neighbourhood_obs_free(self, cur_SGs : list)-> set:
+        '''randomly change the direction in 360 degrss
+
+            Args:
+                cur_SGs (list): current positon
+
+            Returns:
+                set: the set of neighbour solution
+        '''
+        # TODO: neighbourhood
+        return {cur_SGs}
+    
+    def neighbourhood_optimize_edge(self, cur_SGs : list)-> set:
+        '''randomly change the direction in 360 degrss
+
+            Args:
+                cur_SGs (list): current positon
+
+            Returns:
+                set: the set of neighbour solution
+        '''
+        # TODO: neighbourhood
+        return {cur_SGs}
+    
     def neighbourhood_selector(self, name: str, cur_SGs : list)-> set:
         '''select the right neighbourhood by using the name
-            # *neighbourhood name domain = {"neihgbourhood_up", "neihgbourhood_dowm", "neihgbourhood_left", "neihgbourhood_right",
-            # *                             "neihgbourhood_random", "neihgbourhood_random_eight", "neihgbourhood_obs_free", "neihgbourhood_optimize_edge"}
+            # *neighbourhood name domain = {"neighbourhood_up", "neighbourhood_dowm", "neighbourhood_left", "neighbourhood_right",
+            # *                             "neighbourhood_random", "neighbourhood_random_eight", "neighbourhood_obs_free", "neighbourhood_optimize_edge"}
 
             Args:
                 name (str): name of the neighbourhood we want 
@@ -264,25 +357,25 @@ class APF_VNS():
             Returns:
                 set: set of all of this neighbourhood solutions
         '''
-        if name == "neihgbourhood_random":
+        if name == "neighbourhood_random":
             return self.neighbourhood_random(cur_SGs)
-        elif name == "neihgbourhood_up":
-            return self.neihgbourhood_up(cur_SGs)
-        elif name == "neighbourhood_random":
-            return self.neighbourhood_random(cur_SGs)
-        elif name == "neihgbourhood_left":
-            return self.neihgbourhood_left(cur_SGs)
-        elif name == "neihgbourhood_right":
-            return self.neihgbourhood_right(cur_SGs)
-        elif name == "neihgbourhood_random_eight":
-            return self.neihgbourhood_random_eight(cur_SGs)
-        elif name == "neihgbourhood_obs_free":
-            return self.neihgbourhood_obs_free(cur_SGs)
-        elif name == "neihgbourhood_optimize_edge":
-            return self.neihgbourhood_optimize_edge(cur_SGs)
+        elif name == "neighbourhood_up":
+            return self.neighbourhood_up(cur_SGs)
+        elif name == "neighbourhood_dowm":
+            return self.neighbourhood_dowm(cur_SGs)
+        elif name == "neighbourhood_left":
+            return self.neighbourhood_left(cur_SGs)
+        elif name == "neighbourhood_right":
+            return self.neighbourhood_right(cur_SGs)
+        elif name == "neighbourhood_random_eight":
+            return self.neighbourhood_random_eight(cur_SGs)
+        elif name == "neighbourhood_obs_free":
+            return self.neighbourhood_obs_free(cur_SGs)
+        elif name == "neighbourhood_optimize_edge":
+            return self.neighbourhood_optimize_edge(cur_SGs)
         else:
             raise ValueError("name: " + name + " - this Neighbourhood does not exist!!!")
-    
+        
 
 if __name__ == '__main__':
     start = (0, 0)
