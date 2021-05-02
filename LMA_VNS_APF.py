@@ -50,6 +50,9 @@ class Vector2d():
 
     def __repr__(self):
         return 'Vector X:{}, Y:{}, length:{}, Unit_Vec:{}'.format(self.deltaX, self.deltaY, self.length, self.Unit_Vec)
+    
+    def distance_points(p1: tuple,p2: tuple)-> float:
+        return math.sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2)
 
 class APF_VNS():
     def __init__(self,
@@ -86,7 +89,7 @@ class APF_VNS():
     def U_rep(self, pos):
         all_U = 0
         for ob in self.V_obstacle_list:
-            rep_F = self.current_pos - ob
+            rep_F = pos - ob
             if (rep_F.length <= self.rep_range):
                 all_U += 0.5 * self.k_rep * (1 / (rep_F.length) - (1 / self.rep_range)) ** 2
         return all_U
@@ -119,13 +122,19 @@ class APF_VNS():
             self.subgoals.append(self.path[0])
             self.path.remove(self.path[0])
         else:
-            interval = int(self.length / self.num_SG)
+            INTERVAL = int(self.length / self.num_SG)
             for index in range(self.num_SG):
-                self.subgoals.append(self.path[-1 - (index + 1) * interval])
+                SG_index = -1 - (index + 1) * INTERVAL
+                self.subgoals.append(self.path[SG_index])
+                
                 if index == self.num_SG - 1:
-                    self.path = self.path[0 : -1 - (index + 1) * interval + len(self.path)]
-                    self.current_pos = self.path[-1 - (index + 2) * interval + len(self.path)]
-                    # TODO: index out of bound
+                    self.path = self.path[0 : SG_index + len(self.path)]
+                    
+                    if SG_index + len(self.path) < INTERVAL:
+                        self.current_pos = self.path[0]
+                    else:
+                        self.current_pos = self.path[SG_index + INTERVAL + len(self.path)]  
+                    
                     
     def VNS(self, neighbourhood_names: list):
         '''find the subgoals that can help the agent escape from the LM
@@ -197,7 +206,13 @@ class APF_VNS():
             Returns:
                 float: evaluation
         '''
-        return 0.0
+        U_ALL = functools.reduce(lambda x,y: (self.U_att(x) - self.U_rep(x)) + (self.U_att(y) - self.U_rep(y)), subgoals)
+        D_PATH = [Vector2d.distance_points(subgoals[i - 1], subgoals[i]) for i in range(1, len(subgoals))]
+        U_EDGE = 
+        a = 1
+        b = 1
+        c = 1
+        return a * U_ALL - b * D_PATH - c * U_EDGE
     
     def path_plan(self):
         while (self.cur_iters < self.max_iters and (self.current_pos - self.goal).length > self.goal_threshold):
@@ -252,19 +267,19 @@ class APF_VNS():
         if name == "neihgbourhood_random":
             return self.neighbourhood_random(cur_SGs)
         elif name == "neihgbourhood_up":
-            pass
-        elif name == "neihgbourhood_dowm":
-            pass
+            return self.neihgbourhood_up(cur_SGs)
+        elif name == "neighbourhood_random":
+            return self.neighbourhood_random(cur_SGs)
         elif name == "neihgbourhood_left":
-            pass
+            return self.neihgbourhood_left(cur_SGs)
         elif name == "neihgbourhood_right":
-            pass
+            return self.neihgbourhood_right(cur_SGs)
         elif name == "neihgbourhood_random_eight":
-            pass
+            return self.neihgbourhood_random_eight(cur_SGs)
         elif name == "neihgbourhood_obs_free":
-            pass
+            return self.neihgbourhood_obs_free(cur_SGs)
         elif name == "neihgbourhood_optimize_edge":
-            pass
+            return self.neihgbourhood_optimize_edge(cur_SGs)
         else:
             raise ValueError("name: " + name + " - this Neighbourhood does not exist!!!")
     
