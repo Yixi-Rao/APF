@@ -228,7 +228,7 @@ class APF_VNS():
         '''evaluate the subgoals in three aspects
 
             Args:
-                subgoals (list): subgoals
+                subgoals (list or tuple): subgoals
 
             Returns:
                 float: evaluation
@@ -288,8 +288,8 @@ class APF_VNS():
                 ran_degree = random.randint(0, 360)
                 cos = math.cos(math.radians(ran_degree))
                 sin = math.sin(math.radians(ran_degree))
-                vec = Vector2d(cos, sin) * self.step_size
-                neighbour.append((sg[0] + vec.Unit_Vec[0], sg[1] + vec.Unit_Vec[1]))
+                # vec = Vector2d(cos, sin) * self.step_size
+                neighbour.append((sg[0] + cos * self.step_size, sg[1] + sin * self.step_size))
             result.add(tuple(neighbour))
         return result
     
