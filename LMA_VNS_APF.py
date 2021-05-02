@@ -12,6 +12,10 @@ class Vector2d():
         self.length = -1       # 向量长度
         self.Unit_Vec = [0, 0]   # 此向量的单位向量
         self.property_setting()
+    
+    @classmethod
+    def Tuple_init(cls, point: tuple):
+        return cls(point[0], point[1])
 
     def property_setting(self):
         '''
@@ -93,11 +97,11 @@ class APF_VNS():
                                                         # *                     "neihgbourhood_random", "neihgbourhood_random_eight", "neihgbourhood_obs_free", "neihgbourhood_optimize_edge"}
         
         self.is_path_plan_success = False               # 是否陷入不可达或局部最小值
-
-    def U_att(self, pos):
+#! --------------------------APF---------------------------------
+    def U_att(self, pos: Vector2d)-> float:
         return 0.5 * self.k_att * ((pos - self.goal).length) ** 2
 
-    def U_rep(self, pos):
+    def U_rep(self, pos: Vector2d)-> float:
         all_U = 0
         for ob in self.V_obstacle_list:
             rep_F = pos - ob
@@ -110,10 +114,13 @@ class APF_VNS():
         for ob in self.V_obstacle_list:
             distance = Vector2d.distance_point_line(ob.vector_in_tuple(), line_p1, line_p2)
             if (distance <= self.rep_range):
-                all_U += 0.5 * self.k_rep * (1 / (distance) - (1 / self.rep_range)) ** 2
+                try:
+                    all_U += 0.5 * self.k_rep * (1 / (distance) - (1 / self.rep_range)) ** 2
+                except ZeroDivisionError:
+                    all_U = float('inf')
         return all_U
 
-    def attractive_F(self, source: Vector2d):
+    def attractive_F(self, source: Vector2d)-> Vector2d:
         '''
             U_att(cur) = 1/2 * α * |cur - goal|^2 
             F_att(cur) = - ▽U_att(cur) = - α * (cur - goal)
@@ -121,7 +128,7 @@ class APF_VNS():
         att = (source - self.current_pos) * self.k_att
         return att
 
-    def repulsion_F(self):
+    def repulsion_F(self)-> Vector2d:
         """
             U_rep(cur) = 1/2 * β * (1 / (|cur - goal|) - 1 / rr)^2
             F_rep(cur) = β * (1 / (|cur - goal|) - 1 / rr) * 1/(|cur - goal|^2) * ▽(|cur - goal|)
@@ -132,9 +139,10 @@ class APF_VNS():
             if (rep_F.length <= self.rep_range):  # 在斥力影响范围
                 rep += Vector2d(rep_F.Unit_Vec[0], rep_F.Unit_Vec[1]) * self.k_rep * (1.0 / rep_F.length - 1.0 / self.rep_range) / (rep_F.length ** 2)
         return rep
-
+#! --------------------------VNS---------------------------------
     def dividePath(self):
         '''generate the self.subgoals, which is uniformly spaced from the self.path[len(self.path) - self.length : ]
+           subgoals 是倒过来的 [s5,s4,s3,s2,s1]
         '''
         self.subgoals.clear()
         if len(self.path) < self.length:
@@ -147,12 +155,13 @@ class APF_VNS():
                 self.subgoals.append(self.path[SG_index])
                 
                 if index == self.num_SG - 1:
-                    self.path = self.path[0 : SG_index + len(self.path)]
-                    
+                    print(SG_index - INTERVAL + len(self.path))
                     if SG_index + len(self.path) < INTERVAL:
-                        self.current_pos = self.path[0]
+                        self.current_pos = Vector2d.Tuple_init(self.path[0])
+                        self.path = self.path[:1]
                     else:
-                        self.current_pos = self.path[SG_index + INTERVAL + len(self.path)]  
+                        self.current_pos = Vector2d.Tuple_init(self.path[SG_index - INTERVAL + len(self.path)])
+                        self.path = self.path[0 : SG_index - INTERVAL + len(self.path) + 1]  
 
     def VNS(self, neighbourhood_names: list)-> None:
         '''find the subgoals that can help the agent escape from the LM
@@ -215,7 +224,7 @@ class APF_VNS():
                 result[ran_index] = new_pos
                 return result
         
-    def objective_func(self, subgoals: list)-> float:
+    def objective_func(self, subgoals)-> float:
         '''evaluate the subgoals in three aspects
 
             Args:
@@ -224,8 +233,12 @@ class APF_VNS():
             Returns:
                 float: evaluation
         '''
-        U_ALL  = functools.reduce(lambda x,y: (self.U_att(x) - self.U_rep(x)) + (self.U_att(y) - self.U_rep(y)), subgoals)
-        D_PATH = sum([Vector2d.distance_points(subgoals[i - 1], subgoals[i]) for i in range(1, len(subgoals))])
+        U_ALL  = sum([(self.U_att(Vector2d.Tuple_init(x)) - self.U_rep(Vector2d.Tuple_init(x))) for x in subgoals])
+        
+        D_PATH = sum([Vector2d.distance_points(self.current_pos.vector_in_tuple(), subgoals[-1])] + 
+                     [Vector2d.distance_points(subgoals[i - 1], subgoals[i]) for i in range(1, len(subgoals))] + 
+                     [Vector2d.distance_points(self.goal.vector_in_tuple(), subgoals[0])])
+        
         U_EDGE = sum([self.U_edge(subgoals[i], subgoals[i - 1])  for i in range(1, len(subgoals))])
         a = 1
         b = 1
@@ -236,20 +249,20 @@ class APF_VNS():
         while (self.cur_iters < self.max_iters and (self.current_pos - self.goal).length > self.goal_threshold):
             
             if len(self.subgoals) != 0:
-                f_vec = self.attractive_F(self.subgoals[0]) + self.repulsion_F()
-                self.current_pos += Vector2d(f_vec.Unit_Vec[0], f_vec.Unit_Vec[1]) * self.step_size
-                if (len(self.path) >= 3 and (Vector2d(self.path[-2][0], self.path[-2][1]) - self.current_pos).length < self.step_size):
+                f_vec = self.attractive_F(self.subgoals[-1]) + self.repulsion_F()
+                self.current_pos += Vector2d.Tuple_init(f_vec.Unit_Vec)  * self.step_size 
+                if (len(self.path) >= 3 and (Vector2d.Tuple_init(self.path[-2]) - self.current_pos).length < self.step_size):
                     self.dividePath()
                     self.VNS(self.N_order)
                 else:
-                    if (self.current_pos - self.subgoals[0]).length <= self.step_size:
-                        self.subgoals.remove(self.subgoals[0])
+                    if (self.current_pos - Vector2d.Tuple_init(self.subgoals[-1])).length <= self.step_size:
+                        self.subgoals.remove(self.subgoals[-1])
                     else:
                         self.path.append((self.current_pos.deltaX, self.current_pos.deltaY))
             else:
                 f_vec = self.attractive_F(self.goal) + self.repulsion_F()
-                self.current_pos += Vector2d(f_vec.Unit_Vec[0], f_vec.Unit_Vec[1]) * self.step_size
-                if (len(self.path) >= 3 and (Vector2d(self.path[-2][0], self.path[-2][1]) - self.current_pos).length < self.step_size):
+                self.current_pos += Vector2d.Tuple_init(f_vec.Unit_Vec) * self.step_size
+                if (len(self.path) >= 3 and (Vector2d.Tuple_init(self.path[-2]) - self.current_pos).length < self.step_size):
                     self.dividePath()
                     self.VNS(self.N_order)
                 else:
@@ -258,7 +271,7 @@ class APF_VNS():
             self.cur_iters += 1
         if (self.current_pos - self.goal).length <= self.goal_threshold:
             self.is_path_plan_success = True
-   
+#! --------------------------neighbourhood---------------------------------  
     def neighbourhood_random(self, cur_SGs : list)-> set:
         '''randomly change the direction in 360 degrss
 
@@ -268,8 +281,17 @@ class APF_VNS():
             Returns:
                 set: the set of neighbour solution
         '''
-        # TODO: neighbourhood
-        return {cur_SGs}
+        result = set()
+        for _ in range(8):
+            neighbour = list()
+            for sg in cur_SGs:
+                ran_degree = random.randint(0, 360)
+                cos = math.cos(math.radians(ran_degree))
+                sin = math.sin(math.radians(ran_degree))
+                vec = Vector2d(cos, sin) * self.step_size
+                neighbour.append((sg[0] + vec.Unit_Vec[0], sg[1] + vec.Unit_Vec[1]))
+            result.add(tuple(neighbour))
+        return result
     
     def neighbourhood_up(self, cur_SGs : list)-> set:
         '''randomly change the direction in 360 degrss
@@ -405,6 +427,31 @@ if __name__ == '__main__':
     neighbour_name = ["neihgbourhood_up", "neihgbourhood_dowm", "neihgbourhood_left", "neihgbourhood_right"]
     
     APF1 = APF_VNS(start, goal, obstacle_List1, k_att, k_rep, rep_range, step_size, max_iters, goal_threshold, length, num_sub, neighbour_name)
+    APF1.path = [
+                [0.1414213562373095, 0.1414213562373095],
+                [0.282842712474619, 0.282842712474619], #*
+                [0.4242640687119285, 0.4242640687119285],
+                [0.565685424949238, 0.565685424949238],
+                [0.7071067811865475, 0.7071067811865475],
+                [0.848528137423857, 0.848528137423857],  #! 1
+                [0.9899494936611666, 0.9899494936611666],
+                [1.131370849898476, 1.131370849898476], 
+                [1.2727922061357855, 1.2727922061357855], 
+                [1.414213562373095, 1.414213562373095], #! 2
+                [1.5556349186104044, 1.5556349186104044],
+                [1.6970562748477138, 1.6970562748477138],
+                [1.8384776310850233, 1.8384776310850233],
+                [1.9798989873223327, 1.9798989873223327], #! 3
+                [2.1213203435596424, 2.1213203435596424],
+                [2.262741699796952, 2.262741699796952],
+                [2.4041630560342617, 2.4041630560342617],
+                [2.5455844122715714, 2.5455844122715714], #! 4
+                [3,3],
+                [4,4],
+                [5,5],
+                [6,6]
+                ]
+    print(len(APF1.path))    
     # APF1.path_plan()
     
     # fig = plt.figure(figsize=(7, 7))
