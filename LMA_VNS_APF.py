@@ -403,8 +403,28 @@ class APF_VNS():
             Returns:
                 list: the list of neighbour solution
         '''
-        # TODO: neighbourhood
-        return {cur_SGs}
+        result = list()
+        for _ in range(8):
+            neighbour = list()
+            for sg in cur_SGs:
+                ran_degree = random.randint(0, 360)
+                cos = math.cos(math.radians(ran_degree))
+                sin = math.sin(math.radians(ran_degree))
+
+                available = []
+                for ob in self.V_obstacle_list:
+                    d = Vector2d(sg[0] + cos * self.step_size, sg[1] + sin * self.step_size) - ob
+                    if (d.length <= self.rep_range):  # 在斥力影响范围
+                        continue
+                    else:
+                        available.append([cos,sin])
+                if len(available) == 0:
+                    neighbour.append((sg[0], sg[1]))
+                else:
+                    index = random.randint(0,len(available)-1)
+                    neighbour.append((sg[0] + available[index][0] * self.step_size, sg[1] + available[index][1] * self.step_size))
+            result.append(neighbour)
+        return result
     
     def neighbourhood_optimize_edge(self, cur_SGs : list)-> list:
         '''randomly change the direction in 360 degrss
@@ -472,8 +492,9 @@ if __name__ == '__main__':
     length         = 18
     num_sub        = 4
     
-    neighbour_name = ["neighbourhood_up", "neighbourhood_down", "neighbourhood_left", "neighbourhood_right"]
+    #neighbour_name = ["neighbourhood_up", "neighbourhood_down", "neighbourhood_left", "neighbourhood_right"]
     #neighbour_name = ["neighbourhood_random_eight", "neighbourhood_random"]
+    neighbour_name = ["neighbourhood_obs_free","neighbourhood_random_eight"]
     
     APF1 = APF_VNS(start, goal, obstacle_List1, k_att, k_rep, rep_range, step_size, max_iters, goal_threshold, length, num_sub, neighbour_name)
     
