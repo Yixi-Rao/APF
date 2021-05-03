@@ -90,7 +90,7 @@ class APF_SA():
     def attractive_F(self):
         '''
             U_att(cur) = 1/2 * α * |cur - goal|^2 
-            F_att(cur) = - ▽U_att(cur) = - α * (cur - goal)
+            F_att(cur) = - ▽U_att(cur) = α * (cur - goal)
         '''
         att = (self.goal - self.current_pos) * self.k_att
         return att
@@ -174,6 +174,13 @@ class APF_SA():
         new_pos = pos + vec
         return new_pos
 
+    def neighborhood_eight_direction(self, pos):
+        degree = random.randint(1, 8)
+        cos = math.cos(math.radians(degree * 45))
+        sin = math.sin(math.radians(degree * 45))
+        vec = Vector2d(cos, sin) * self.step_size
+        new_pos = pos + vec
+        return new_pos
 
 if __name__ == '__main__':
     start          = (0, 0)
