@@ -116,11 +116,13 @@ class APF_VNS():
         all_U = 0
         for ob in self.V_obstacle_list:
             distance = Vector2d.distance_point_line(ob.vector_in_tuple(), line_p1, line_p2)
-            if (distance <= self.rep_range):
+            if 0 < distance <= self.rep_range:
                 try:
                     all_U += 0.5 * self.k_rep * (1 / (distance) - (1 / self.rep_range)) ** 2
                 except ZeroDivisionError:
                     all_U = float('inf')
+            else:
+                all_U = float('inf')
         return all_U
 
     def attractive_F(self, source: Vector2d)-> Vector2d:
@@ -473,7 +475,7 @@ if __name__ == '__main__':
     neighbour_name = ["neighbourhood_up", "neighbourhood_down", "neighbourhood_left", "neighbourhood_right"]
     #neighbour_name = ["neighbourhood_random_eight", "neighbourhood_random"]
     
-    APF1 = APF_VNS(start, goal, obstacle_List2, k_att, k_rep, rep_range, step_size, max_iters, goal_threshold, length, num_sub, neighbour_name)
+    APF1 = APF_VNS(start, goal, obstacle_List1, k_att, k_rep, rep_range, step_size, max_iters, goal_threshold, length, num_sub, neighbour_name)
     
     APF1.path_plan()
     #! figure configuration 
@@ -498,7 +500,7 @@ if __name__ == '__main__':
     subplot.add_patch(circle_goal)
     
     #! all subplots obstacles configuration 
-    for ob_pos in obstacle_List2:
+    for ob_pos in obstacle_List1:
         circle = Circle(xy=(ob_pos[0], ob_pos[1]), radius=rep_range, alpha=0.3, color = 'black')
         subplot.plot(ob_pos[0], ob_pos[1], 's', markersize = 10, color = 'black')
         subplot.add_patch(circle)
