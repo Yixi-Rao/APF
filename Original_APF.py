@@ -135,11 +135,12 @@ if __name__ == '__main__':
     k_rep          = 20
     rep_range      = 0.6
     step_size      = 0.2
-    max_iters      = 1000
+    max_iters      = 50
     goal_threshold = 1.0
 
-    APF1 = APF(start, goal, obstacle_List2, k_att, k_rep, rep_range, step_size, max_iters, goal_threshold)
+    APF1 = APF(start, goal, obstacle_List1, k_att, k_rep, rep_range, step_size, max_iters, goal_threshold)
     APF1.path_plan()
+    print(APF1.path)
 
     fig     = plt.figure(figsize=(7, 7))
     subplot = fig.add_subplot(111)
@@ -151,7 +152,7 @@ if __name__ == '__main__':
     subplot.plot(goal[0], goal[1], 'X')
     subplot.add_patch(circle_goal)
     
-    for ob_pos in obstacle_List2:
+    for ob_pos in obstacle_List1:
         circle = Circle(xy=(ob_pos[0], ob_pos[1]), radius = rep_range, alpha=0.3)
         subplot.plot(ob_pos[0], ob_pos[1], 'o')
         subplot.add_patch(circle)

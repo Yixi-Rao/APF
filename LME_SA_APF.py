@@ -122,6 +122,7 @@ class APF_SA():
         return rep
 
     def path_plan(self):
+        token = True
         while (self.cur_iters < self.max_iters and (self.current_pos - self.goal).length > self.goal_threashold):
             f_vec = self.attractive_F() + self.repulsion_F()
             
@@ -129,6 +130,10 @@ class APF_SA():
             
         # escape --------------------------------------
             if (len(self.path) >= 3 and (Vector2d(self.path[-2][0], self.path[-2][1]) - self.current_pos).length < self.step_size):
+                if token:
+                    token = False
+                    print(self.path)
+                
                 T0 = 500  # initial T
                 r  = 0.99 # cooling rate
                 Tf = 10   # exit T
