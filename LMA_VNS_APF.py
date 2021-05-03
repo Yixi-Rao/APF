@@ -68,6 +68,10 @@ class Vector2d():
         vecP = Vector2d(line_p2[0] - line_p1[0], line_p2[1] - line_p1[1])
         distance = np.abs(np.cross(vec1,vec2)) / vecP.length
         return distance
+    
+    @staticmethod
+    def Is_PointOnLine(p: tuple, line_p1: tuple, line_p2: tuple)-> bool:
+        return Vector2d.distance_points(p, line_p1) + Vector2d.distance_points(p, line_p2) == Vector2d.distance_points(line_p1, line_p2)
 
 class APF_VNS():
     def __init__(self,
@@ -116,13 +120,15 @@ class APF_VNS():
         all_U = 0
         for ob in self.V_obstacle_list:
             distance = Vector2d.distance_point_line(ob.vector_in_tuple(), line_p1, line_p2)
-            if 0 < distance <= self.rep_range:
-                try:
-                    all_U += 0.5 * self.k_rep * (1 / (distance) - (1 / self.rep_range)) ** 2
-                except ZeroDivisionError:
-                    all_U = float('inf')
-            else:
+            
+            if not Vector2d.Is_PointOnLine(ob.vector_in_tuple(), line_p1, line_p2):
+                continue
+            elif distance == 0:
+                print("distance should be 0: d = " + str(distance))
                 all_U = float('inf')
+            else:
+                all_U += 0.5 * self.k_rep * (1 / (distance) - (1 / self.rep_range)) ** 2
+            
         return all_U
 
     def attractive_F(self, source: Vector2d)-> Vector2d:
@@ -150,6 +156,7 @@ class APF_VNS():
            subgoals 是倒过来的 [s5,s4,s3,s2,s1]
         '''
         self.subgoals.clear()
+        
         if len(self.path) < self.length:
             self.subgoals.append(self.path[0])
             self.path.remove(self.path[0])
@@ -177,7 +184,7 @@ class APF_VNS():
         k = 1
         cur_SGs = self.subgoals
         
-        while k != len(neighbourhood_names) and t != 50:
+        while k != len(neighbourhood_names) and t != 70:
             shaked_SGs = self.shuffing(cur_SGs)
             local_SGs  = self.bestImprovement(shaked_SGs, self.neighbourhood_selector(neighbourhood_names[k - 1], shaked_SGs))
             if self.objective_func(local_SGs) > self.objective_func(cur_SGs):
@@ -202,7 +209,7 @@ class APF_VNS():
         '''
         temp  = shaked_SGs.copy()
         t_max = 1
-        while True and t_max < 10:
+        while True and t_max < 20:
             local_SGs = temp
             max_val   = max(map(self.objective_func, N))
             temp      = list(filter(lambda x: self.objective_func(x) == max_val, N))[0]
@@ -246,9 +253,10 @@ class APF_VNS():
                      [Vector2d.distance_points(self.goal.vector_in_tuple(), subgoals[0])])
         
         U_EDGE = sum([self.U_edge(subgoals[i], subgoals[i - 1])  for i in range(1, len(subgoals))])
-        a = 2
-        b = 1
-        c = 1
+        a = 1
+        b = 20
+        c = 10
+        # print("U_ALL: " + str(a * U_ALL) + ", D_PATH: " + str(- b * D_PATH) + ", U_EDGE: " + str(- c * U_EDGE))
         return a * U_ALL - b * D_PATH - c * U_EDGE
     
     def path_plan(self):
@@ -262,7 +270,6 @@ class APF_VNS():
                     self.stuck_paths.append(self.path.copy()) #! delete safe
                     self.dividePath()
                     self.VNS(self.N_order)
-                    
                 else:
                     if (self.current_pos - Vector2d.Tuple_init(self.subgoals[-1])).length <= self.step_size:
                         self.subgoals.remove(self.subgoals[-1])
@@ -271,7 +278,7 @@ class APF_VNS():
             else:
                 f_vec = self.attractive_F(self.goal) + self.repulsion_F()
                 self.current_pos += Vector2d.Tuple_init(f_vec.Unit_Vec) * self.step_size
-                if (len(self.path) >= 3 and (Vector2d.Tuple_init(self.path[-2]) - self.current_pos).length < self.step_size/ 100):
+                if (len(self.path) >= 3 and (Vector2d.Tuple_init(self.path[-2]) - self.current_pos).length < self.step_size / 100):
                     self.stuck_paths.append(self.path.copy()) #! delete safe
                     self.dividePath()
                     if first:
@@ -302,7 +309,7 @@ class APF_VNS():
                 ran_degree = random.randint(0, 360)
                 cos = math.cos(math.radians(ran_degree))
                 sin = math.sin(math.radians(ran_degree))
-                neighbour.append((sg[0] + cos * self.step_size, sg[1] + sin * self.step_size))
+                neighbour.append((sg[0] + cos * self.step_size * 0.8, sg[1] + sin * self.step_size * 0.8))
             result.append(neighbour)
         return result
     
@@ -322,7 +329,7 @@ class APF_VNS():
                 ran_degree = random.randint(1, 8) * 45
                 cos = math.cos(math.radians(ran_degree))
                 sin = math.sin(math.radians(ran_degree))
-                neighbour.append((sg[0] + cos * self.step_size, sg[1] + sin * self.step_size))
+                neighbour.append((sg[0] + cos * self.step_size * 0.8, sg[1] + sin * self.step_size * 0.8))
             result.append(neighbour)
         return result
     
@@ -336,10 +343,11 @@ class APF_VNS():
                 list: the list of neighbour solution
         '''
         result = list()
-        for _ in range(8):
+        interval = self.step_size / 2
+        for i in range(8):
             neighbour = list()
             for sg in cur_SGs:
-                neighbour.append((sg[0],sg[1]+self.step_size))
+                neighbour.append((sg[0], sg[1] + interval * (i + 1)))
             result.append(neighbour)
         return result
     
@@ -353,10 +361,11 @@ class APF_VNS():
                 list: the list of neighbour solution
         '''
         result = list()
-        for _ in range(8):
+        interval = self.step_size / 2
+        for i in range(8):
             neighbour = list()
             for sg in cur_SGs:
-                neighbour.append((sg[0], sg[1] - self.step_size))
+                neighbour.append((sg[0], sg[1] - interval * (i + 1)))
             result.append(neighbour)
         return result
     
@@ -370,10 +379,11 @@ class APF_VNS():
                 list: the list of neighbour solution
         '''
         result = list()
-        for _ in range(8):
+        interval = self.step_size / 2
+        for i in range(8):
             neighbour = list()
             for sg in cur_SGs:
-                neighbour.append((sg[0] - self.step_size, sg[1]))
+                neighbour.append((sg[0] - interval * (i + 1), sg[1]))
             result.append(neighbour)
         return result
     
@@ -387,10 +397,11 @@ class APF_VNS():
                 list: the list of neighbour solution
         '''
         result = list()
-        for _ in range(8):
+        interval = self.step_size / 2
+        for i in range(8):
             neighbour = list()
             for sg in cur_SGs:
-                neighbour.append((sg[0] + self.step_size, sg[1]))
+                neighbour.append((sg[0] + interval * (i + 1), sg[1]))
             result.append(neighbour)
         return result
     
@@ -414,14 +425,15 @@ class APF_VNS():
                 available = []
                 for ob in self.V_obstacle_list:
                     d = Vector2d(sg[0] + cos * self.step_size, sg[1] + sin * self.step_size) - ob
-                    if (d.length <= self.rep_range):  # 在斥力影响范围
+                    if (d.length <= self.rep_range): 
                         continue
                     else:
                         available.append([cos,sin])
+
                 if len(available) == 0:
-                    neighbour.append((sg[0], sg[1]))
+                    neighbour.append(sg)
                 else:
-                    index = random.randint(0,len(available)-1)
+                    index = random.randint(0, len(available) - 1)
                     neighbour.append((sg[0] + available[index][0] * self.step_size, sg[1] + available[index][1] * self.step_size))
             result.append(neighbour)
         return result
@@ -472,8 +484,8 @@ class APF_VNS():
     
     def neighbourhood_selector(self, name: str, cur_SGs : list)-> list:
         '''select the right neighbourhood by using the name
-            # *neighbourhood name domain = {"neighbourhood_up", "neighbourhood_dowm", "neighbourhood_left", "neighbourhood_right",
-            # *                             "neighbourhood_random", "neighbourhood_random_eight", "neighbourhood_obs_free", "neighbourhood_optimize_edge"}
+            #* neighbourhood name domain = {"neighbourhood_up", "neighbourhood_dowm", "neighbourhood_left", "neighbourhood_right",
+            #*                              "neighbourhood_random", "neighbourhood_random_eight", "neighbourhood_obs_free", "neighbourhood_optimize_edge"}
 
             Args:
                 name (str): name of the neighbourhood we want 
@@ -514,8 +526,9 @@ if __name__ == '__main__':
     start = (0, 0)
     goal  = (10, 10)
     
-    obstacle_List1 = [[6, 6], [5.75, 6], [5.5, 6], [6, 5.75], [6, 5.5]]  # 低效率的环形障碍物不可达# 目标障碍物同一直线不可达问题
-    obstacle_List2 = [[6, 6]]
+    obstacle_List1 = [[6, 6]]
+    obstacle_List2 = [[6, 6], [5.75, 6], [5.5, 6], [6, 5.75], [6, 5.5]]
+    obstacle_List3 = [[6, 6], [5.75, 6], [6, 5.75]]
     
     k_att          = 1
     k_rep          = 20
@@ -526,17 +539,22 @@ if __name__ == '__main__':
     length         = 18
     num_sub        = 4
     
-    #neighbour_name = ["neighbourhood_up", "neighbourhood_down", "neighbourhood_left", "neighbourhood_right"]
-    #neighbour_name = ["neighbourhood_random_eight", "neighbourhood_random"]
-    #neighbour_name = ["neighbourhood_obs_free","neighbourhood_highest_poss"]
-    neighbour_name = ["neighbourhood_up", "neighbourhood_down", "neighbourhood_left", "neighbourhood_right",
-                      "neighbourhood_random_eight", "neighbourhood_random","neighbourhood_obs_free","neighbourhood_highest_poss"]
+    #? four direction neighbourhoods list
+    # neighbour_name = ["neighbourhood_up", "neighbourhood_right", "neighbourhood_left", "neighbourhood_down"]
+    #? random neighbourhoods list 
+    # neighbour_name = ["neighbourhood_random_eight", "neighbourhood_random"]
+    #? four direction + random neighbourhoods list
+    neighbour_name = ["neighbourhood_up", "neighbourhood_right", "neighbourhood_left", "neighbourhood_down", "neighbourhood_random_eight", "neighbourhood_random"]
+    #? path optimization neighbourhoods list 
+    # neighbour_name = ["neighbourhood_obs_free","neighbourhood_highest_poss"]
+    #? all neighbourhoods list 
+    # neighbour_name = ["neighbourhood_up", "neighbourhood_down", "neighbourhood_left", "neighbourhood_right", "neighbourhood_random_eight", "neighbourhood_random","neighbourhood_obs_free","neighbourhood_highest_poss"] 
     
-    APF1 = APF_VNS(start, goal, obstacle_List1, k_att, k_rep, rep_range, step_size, max_iters, goal_threshold, length, num_sub, neighbour_name)
+    APF1 = APF_VNS(start, goal, obstacle_List2, k_att, k_rep, rep_range, step_size, max_iters, goal_threshold, length, num_sub, neighbour_name)
     
     APF1.path_plan()
     #! figure configuration 
-    fig      = plt.figure(figsize=(18, 9))
+    fig      = plt.figure(figsize=(24, 12))
     subplot  = fig.add_subplot(1,2,1) # 子图1：显示path和最后一个subgoals
     subplot2 = fig.add_subplot(1,2,2) # 子图2：显示所有探索过的subgoals
     
@@ -544,42 +562,42 @@ if __name__ == '__main__':
     subplot.set_xlabel('X')
     subplot.set_ylabel('Y')
     subplot.set_title('Path graph')
-    subplot.plot(start[0], start[1], marker='*', color='g')
+    subplot.plot(start[0], start[1], marker='h', color='r')
     
     #! subplot2 configuration 
     subplot2.set_xlabel('X')
     subplot2.set_ylabel('Y')
     subplot2.set_title('subgoals graph')
-    subplot2.plot(start[0], start[1], marker='*', color='g')
     
-    circle_goal = Circle(xy=(goal[0], goal[1]), radius = goal_threshold, alpha=0.1, color = 'r')
-    subplot.plot(goal[0], goal[1], marker='*', color='g')
+    circle_goal = Circle(xy=(goal[0], goal[1]), radius = goal_threshold, alpha=0.1, color = 'r', )
+    subplot.plot(goal[0], goal[1], marker='*', color='r', markersize =14)
     subplot.add_patch(circle_goal)
     
     #! all subplots obstacles configuration 
-    for ob_pos in obstacle_List1:
+    for ob_pos in obstacle_List2:
         circle = Circle(xy=(ob_pos[0], ob_pos[1]), radius=rep_range, alpha=0.3, color = 'black')
         subplot.plot(ob_pos[0], ob_pos[1], 's', markersize = 10, color = 'black')
         subplot.add_patch(circle)
         
-        circle2 = Circle(xy=(ob_pos[0], ob_pos[1]), radius=rep_range, alpha=0.3, color = 'black')
-        subplot2.plot(ob_pos[0], ob_pos[1], 's', markersize = 10, color = 'black')
+        circle2 = Circle(xy=(ob_pos[0], ob_pos[1]), radius=rep_range, alpha=0.1, color = 'black')
+        subplot2.plot(ob_pos[0], ob_pos[1], 's', markersize = 10, color = 'black',alpha=0.1)
         subplot2.add_patch(circle2)
     
     #! subplot1 lines configuration    
     subplot.plot([p[0] for p in APF1.path], [p[1] for p in APF1.path], linestyle='-', marker='o', color = 'g', label = "path")
-    subplot.plot([p[0] for p in APF1.all_subgoals[-1]], [p[1] for p in APF1.all_subgoals[-1]],markersize = 20 , marker='*', color = 'r',alpha=0.3, label = "fianl subgoals")
-    
+    subplot.plot([p[0] for p in APF1.all_subgoals[-1]], [p[1] for p in APF1.all_subgoals[-1]],markersize = 20 , marker='*', color = 'r',alpha=0.3, label = "final subgoals")
+    subplot.plot([p[0] for p in APF1.first_stuck], [p[1] for p in APF1.first_stuck], linestyle=':', markersize = 15,marker='*', color = 'g',label = "first stuck subgoals", alpha = 0.3)
     #! subplot2 lines configuration  
     color = ['b','r','y','c','k','m','y','b','r','y','c','k','m','k','b','r','y','c','k','m','c',
              'b','r','y','c','k','m','y','b','r','y','c','k','m','k','b','r','y','c','k','m','c',
              'b','r','y','c','k','m','y','b','r','y','c','k','m','r','b','r','y','c','k','m','c',]
     
-    subplot2.plot([p[0] for p in APF1.first_stuck], [p[1] for p in APF1.first_stuck], linestyle='-', markersize = 15,marker='o', color = 'r',label = "initial subgoals")
+    subplot2.plot([p[0] for p in APF1.first_stuck], [p[1] for p in APF1.first_stuck], linestyle='-', markersize = 15,marker='o', color = 'r',label = "initial subgoals", alpha = 0.3)
     
     for i, path in enumerate(APF1.all_subgoals):
-        subplot2.plot([p[0] for p in path], [p[1] for p in path], linestyle='-', marker='*', color = color[i],label = "all the subgoals")
+        subplot2.plot([p[0] for p in path], [p[1] for p in path], linestyle=':', marker='*', color = color[i],alpha=0.3)
         
     #! show   
-    plt.legend()
+    subplot.legend(loc = 'lower right')
+    subplot2.legend(loc = 'lower right')
     plt.show()
