@@ -196,7 +196,6 @@ class APF_VNS():
         self.subgoals = cur_SGs
         self.all_subgoals.append(self.subgoals.copy()) #! delete safe
         
-    
     def bestImprovement(self, shaked_SGs: list, N: list)-> list:
         '''a local serach
 
@@ -439,7 +438,8 @@ class APF_VNS():
         return result
     
     def neighbourhood_optimize_edge(self, cur_SGs : list)-> list:
-        '''randomly change the direction in 360 degrss
+        '''生成这个领域的可能的8个解的list，此领域为智能道路优化领域，这个领域的解会尽量减少U_edge的值。
+           具体：每一个subgoal都会360°位移，新的位移的点与他相邻的subgoals连线计算的U_edge值会减小
 
             Args:
                 cur_SGs (list): current positon
