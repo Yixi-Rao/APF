@@ -333,7 +333,6 @@ class APF_VNS():
             Returns:
                 list: the list of neighbour solution
         '''
-        # TODO: neighbourhood
         result = list()
         for _ in range(8):
             neighbour = list()
@@ -342,8 +341,8 @@ class APF_VNS():
             result.append(neighbour)
         return result
     
-    def neighbourhood_dowm(self, cur_SGs : list)-> list:
-        '''randomly change the direction in 360 degrss
+    def neighbourhood_down(self, cur_SGs : list)-> list:
+        '''change the direction down
 
             Args:
                 cur_SGs (list): current positon
@@ -351,8 +350,13 @@ class APF_VNS():
             Returns:
                 list: the list of neighbour solution
         '''
-        # TODO: neighbourhood
-        return {cur_SGs}
+        result = list()
+        for _ in range(8):
+            neighbour = list()
+            for sg in cur_SGs:
+                neighbour.append((sg[0], sg[1] - self.step_size))
+            result.append(neighbour)
+        return result
     
     def neighbourhood_left(self, cur_SGs : list)-> list:
         '''randomly change the direction in 360 degrss
@@ -363,8 +367,13 @@ class APF_VNS():
             Returns:
                 list: the list of neighbour solution
         '''
-        # TODO: neighbourhood
-        return {cur_SGs}
+        result = list()
+        for _ in range(8):
+            neighbour = list()
+            for sg in cur_SGs:
+                neighbour.append((sg[0] - self.step_size, sg[1]))
+            result.append(neighbour)
+        return result
     
     def neighbourhood_right(self, cur_SGs : list)-> list:
         '''randomly change the direction in 360 degrss
@@ -375,8 +384,13 @@ class APF_VNS():
             Returns:
                 list: the list of neighbour solution
         '''
-        # TODO: neighbourhood
-        return {cur_SGs}
+        result = list()
+        for _ in range(8):
+            neighbour = list()
+            for sg in cur_SGs:
+                neighbour.append((sg[0] + self.step_size, sg[1]))
+            result.append(neighbour)
+        return result
     
     def neighbourhood_obs_free(self, cur_SGs : list)-> list:
         '''randomly change the direction in 360 degrss
@@ -417,8 +431,8 @@ class APF_VNS():
             return self.neighbourhood_random(cur_SGs)
         elif name == "neighbourhood_up":
             return self.neighbourhood_up(cur_SGs)
-        elif name == "neighbourhood_dowm":
-            return self.neighbourhood_dowm(cur_SGs)
+        elif name == "neighbourhood_down":
+            return self.neighbourhood_down(cur_SGs)
         elif name == "neighbourhood_left":
             return self.neighbourhood_left(cur_SGs)
         elif name == "neighbourhood_right":
@@ -456,8 +470,8 @@ if __name__ == '__main__':
     length         = 18
     num_sub        = 4
     
-    #neighbour_name = ["neihgbourhood_up", "neihgbourhood_dowm", "neihgbourhood_left", "neihgbourhood_right"]
-    neighbour_name = ["neighbourhood_random_eight", "neighbourhood_random"]
+    neighbour_name = ["neighbourhood_up", "neighbourhood_down", "neighbourhood_left", "neighbourhood_right"]
+    #neighbour_name = ["neighbourhood_random_eight", "neighbourhood_random"]
     
     APF1 = APF_VNS(start, goal, obstacle_List2, k_att, k_rep, rep_range, step_size, max_iters, goal_threshold, length, num_sub, neighbour_name)
     
