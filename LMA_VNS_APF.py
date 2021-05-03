@@ -395,7 +395,7 @@ class APF_VNS():
         return result
     
     def neighbourhood_obs_free(self, cur_SGs : list)-> list:
-        '''randomly change the direction in 360 degrss
+        '''randomly change the direction avoiding obstacles
 
             Args:
                 cur_SGs (list): current positon
@@ -437,6 +437,38 @@ class APF_VNS():
         '''
         # TODO: neighbourhood
         return {cur_SGs}
+
+    def neighbourhood_highest_poss(self, cur_SGs : list)-> list:
+        '''change the direction where is farest from the nearest obstacle
+
+            Args:
+                cur_SGs (list): current positon
+
+            Returns:
+                list: the list of neighbour solution
+        '''
+        result = list()
+        for _ in range(8):
+            neighbour = list()
+            for sg in cur_SGs:
+                nearest_ob = None
+                min_d = 100000000.0
+                for ob in self.V_obstacle_list:
+                    d = Vector2d(sg[0], sg[1]) - ob
+                    if (d.length <= min_d ):  # 在斥力影响范围
+                        min_d = d.length
+                        nearest_ob = ob
+                min_vec = [0.0,1.0]
+                max_d = 0.0
+                for degree in range(0,360):
+                    cos = math.cos(math.radians(degree))
+                    sin = math.sin(math.radians(degree))
+                    d = Vector2d(sg[0] + cos * self.step_size, sg[1] + sin * self.step_size) - nearest_ob
+                    if d.length > max_d:
+                        min_vec = [cos,sin]
+                neighbour.append((sg[0] + min_vec[0] * self.step_size, sg[1] + min_vec[1] * self.step_size))
+            result.append(neighbour)
+        return result
     
     def neighbourhood_selector(self, name: str, cur_SGs : list)-> list:
         '''select the right neighbourhood by using the name
@@ -465,6 +497,8 @@ class APF_VNS():
             return self.neighbourhood_obs_free(cur_SGs)
         elif name == "neighbourhood_optimize_edge":
             return self.neighbourhood_optimize_edge(cur_SGs)
+        elif name == "neighbourhood_highest_poss":
+            return self.neighbourhood_highest_poss(cur_SGs)
         else:
             raise ValueError("name: " + name + " - this Neighbourhood does not exist!!!")
 
@@ -494,7 +528,9 @@ if __name__ == '__main__':
     
     #neighbour_name = ["neighbourhood_up", "neighbourhood_down", "neighbourhood_left", "neighbourhood_right"]
     #neighbour_name = ["neighbourhood_random_eight", "neighbourhood_random"]
-    neighbour_name = ["neighbourhood_obs_free","neighbourhood_random_eight"]
+    #neighbour_name = ["neighbourhood_obs_free","neighbourhood_highest_poss"]
+    neighbour_name = ["neighbourhood_up", "neighbourhood_down", "neighbourhood_left", "neighbourhood_right",
+                      "neighbourhood_random_eight", "neighbourhood_random","neighbourhood_obs_free","neighbourhood_highest_poss"]
     
     APF1 = APF_VNS(start, goal, obstacle_List1, k_att, k_rep, rep_range, step_size, max_iters, goal_threshold, length, num_sub, neighbour_name)
     
