@@ -325,7 +325,7 @@ class APF_VNS():
         return result
     
     def neighbourhood_up(self, cur_SGs : list)-> list:
-        '''randomly change the direction in 360 degrss
+        '''change the direction up
 
             Args:
                 cur_SGs (list): current positon
@@ -334,7 +334,13 @@ class APF_VNS():
                 list: the list of neighbour solution
         '''
         # TODO: neighbourhood
-        return {cur_SGs}
+        result = list()
+        for _ in range(8):
+            neighbour = list()
+            for sg in cur_SGs:
+                neighbour.append((sg[0],sg[1]+self.step_size))
+            result.append(neighbour)
+        return result
     
     def neighbourhood_dowm(self, cur_SGs : list)-> list:
         '''randomly change the direction in 360 degrss
