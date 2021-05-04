@@ -127,37 +127,47 @@ if __name__ == '__main__':
     
     # plt.show()
     
-    start          = (0, 0)
-    goal           = (5, 5)
+    start = (0, 0)
+    goal  = (10, 10)
     obstacle_List1 = [[3, 3], [2.5, 3], [2, 3], [3, 2], [3, 2.5]] # 低效率的环形障碍物不可达
-    obstacle_List2 = [[2.7,2.8]]                                      # 目标障碍物同一直线不可达问题
+    obstacle_List2 = [[3,3]]                                      # 目标障碍物同一直线不可达问题
+    obstacle_List4 = [[6, 6], [5.75, 6], [5.5, 6], [6, 5.75], [6, 5.5],[6, 5],
+                      [3.5,4.6], [1.55,1.48], [6,3.83],[6.35,7.45],[4.7,6.9],
+                      [6,2.05],[1.87,7.07],[8.97,4.99], [3, 7], [3.25, 7], [3.5, 7], [3, 6.75], [3, 6.5]]
     k_att          = 1
     k_rep          = 20
     rep_range      = 0.6
     step_size      = 0.2
-    max_iters      = 50
+    max_iters      = 1500
     goal_threshold = 1.0
 
-    APF1 = APF(start, goal, obstacle_List1, k_att, k_rep, rep_range, step_size, max_iters, goal_threshold)
+    APF1 = APF(start, goal, obstacle_List4, k_att, k_rep, rep_range, step_size, max_iters, goal_threshold)
     APF1.path_plan()
-    print(APF1.path)
 
-    fig     = plt.figure(figsize=(7, 7))
+    fig     = plt.figure(figsize=(12, 12))
     subplot = fig.add_subplot(111)
     subplot.set_xlabel('X')
     subplot.set_ylabel('Y')
+    subplot.set_title('Path graph')
     
-    subplot.plot(start[0], start[1], 'X')
-    circle_goal = Circle(xy=(goal[0], goal[1]), radius = goal_threshold, alpha=0.9)
-    subplot.plot(goal[0], goal[1], 'X')
+    subplot.plot(start[0], start[1], marker='h', color='r')
+    circle_goal = Circle(xy=(goal[0], goal[1]), radius = goal_threshold, alpha=0.1, color = 'r', )
+    subplot.plot(goal[0], goal[1], label = "goal", marker='*', color='r', markersize =14)
     subplot.add_patch(circle_goal)
     
-    for ob_pos in obstacle_List1:
-        circle = Circle(xy=(ob_pos[0], ob_pos[1]), radius = rep_range, alpha=0.3)
-        subplot.plot(ob_pos[0], ob_pos[1], 'o')
-        subplot.add_patch(circle)
+    token = True
+    for ob_pos in obstacle_List4:
+        if token:
+            token = False
+            circle = Circle(xy=(ob_pos[0], ob_pos[1]), radius=rep_range, alpha=0.3, color = 'black')
+            subplot.plot(ob_pos[0], ob_pos[1], 's', label = "obstacle", markersize = 10, color = '#4169E1')
+            subplot.add_patch(circle)
+        else:
+            circle = Circle(xy=(ob_pos[0], ob_pos[1]), radius=rep_range, alpha=0.3, color = 'black')
+            subplot.plot(ob_pos[0], ob_pos[1], 's', markersize = 10, color = '#4169E1')
+            subplot.add_patch(circle)
         
-    subplot.plot([p[0] for p in APF1.path], [p[1] for p in APF1.path], linestyle='-', marker='o')
-    
+    subplot.plot([p[0] for p in APF1.path], [p[1] for p in APF1.path], linestyle='-', marker='o', color = 'g', label = "path")
+
     plt.show()
     

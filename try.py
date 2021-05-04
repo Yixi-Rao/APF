@@ -1,4 +1,7 @@
 import LMA_VNS_APF
+from matplotlib import pyplot as plt
+from matplotlib.patches import Circle
+import math
 
 start = (0, 0)
 goal  = (10, 10)
@@ -6,6 +9,7 @@ goal  = (10, 10)
 obstacle_List1 = [[6, 6]]
 obstacle_List2 = [[6, 6], [5.75, 6], [5.5, 6], [6, 5.75], [6, 5.5]]
 obstacle_List3 = [[6, 6], [5.75, 6], [6, 5.75]]
+obstacle_List4 = [[0.5, 1], [2.36, 1.7], [2.6, 3.2], [4, 3.5]]
 
 k_att          = 1
 k_rep          = 20
@@ -19,7 +23,7 @@ num_sub        = 4
 #neighbour_name = ["neighbourhood_up", "neighbourhood_down", "neighbourhood_left", "neighbourhood_right"]
 neighbour_name = ["neighbourhood_random_eight", "neighbourhood_random"]
 
-APF_try = LMA_VNS_APF.APF_VNS(start, goal, obstacle_List3, k_att, k_rep, rep_range, step_size, max_iters, goal_threshold, length, num_sub, neighbour_name)
+APF_try = LMA_VNS_APF.APF_VNS(start, goal, obstacle_List4, k_att, k_rep, rep_range, step_size, max_iters, goal_threshold, length, num_sub, neighbour_name)
 
 
 a = [[(4.8366103833159855, 4.8366103833159855),
@@ -86,5 +90,28 @@ b = [[(4.925373599624804, 4.988256698634097), (4.085488187453391, 4.036003639683
      [(5.732730102497101, 5.00576089978169), (5.7147370332896505, 5.012741703285998), (5.67498300856372, 5.030831318863435), (5.596117026652223, 5.079376737193289)]]
 
 c = [(1,1)]
-print(APF_try.neighbourhood_up(c))
+
+d = [(1,1), (2,2),(3,3),(4,4)]
+# print(APF_try.neighbourhood_up(c))
 #print(LMA_VNS_APF.Vector2d.Is_PointOnLine((2,2), (3,3), (1,1)))
+
+
+fig      = plt.figure(figsize=(10, 10))
+subplot  = fig.add_subplot(111) # 子图1：显示path和最后一个subgoals
+subplot.set_xlabel('X')
+subplot.set_ylabel('Y')
+
+
+
+for ob_pos in obstacle_List4:
+    circle = Circle(xy=(ob_pos[0], ob_pos[1]), radius=rep_range, alpha=0.3, color = 'black')
+    subplot.plot(ob_pos[0], ob_pos[1], 's', markersize = 10, color = 'black')
+    subplot.add_patch(circle)
+print(APF_try.neighbourhood_obs_free(d)[0])
+subplot.plot([p[0] for p in APF_try.neighbourhood_obs_free(d)[0]], [p[1] for p in APF_try.neighbourhood_obs_free(d)[0]], linestyle=':',marker='o', color = 'g',label = "first stuck subgoals", alpha = 1)
+subplot.plot([p[0] for p in d], [p[1] for p in d], linestyle=':',marker='o', color = 'r',label = "first stuck subgoals", alpha = 1)
+
+
+for p in APF_try.neighbourhood_obs_free(d)[0]:
+    print(math.sqrt((p[0] - 1)**2 + (p[1] - 1)**2))    
+plt.show()
